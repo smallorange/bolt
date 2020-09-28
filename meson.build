@@ -66,6 +66,7 @@ endforeach
 
 build_man = get_option('man')
 req_man = build_man == 'true'
+req_polkit = get_option('polkit-required')
 
 # dependencies
 
@@ -81,7 +82,7 @@ gio     = dependency('gio-2.0')
 libudev = dependency('libudev')
 unix    = dependency('gio-unix-2.0')
 udev    = dependency('udev')
-polkit  = dependency('polkit-gobject-1')
+polkit  = dependency('polkit-gobject-1', required: req_polkit)
 mockdev = dependency('umockdev-1.0', required: false)
 
 git     = find_program('git', required: false)
@@ -152,6 +153,7 @@ foreach fn : [
   conf.set10('HAVE_FN_' + fn[0].to_upper(), have)
 endforeach
 
+conf.set10('HAVE_POLKIT', polkit.found())
 if polkit.version().version_compare('>= 0.114')
   conf.set('HAVE_POLKIT_AUTOPTR', '1')
 endif

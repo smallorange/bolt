@@ -28,7 +28,10 @@
 #include "bolt-exported.h"
 
 #include <gio/gio.h>
+
+#if HAVE_POLKIT
 #include <polkit/polkit.h>
+#endif
 
 static void     bouncer_initable_iface_init (GInitableIface *iface);
 
@@ -37,7 +40,7 @@ static gboolean bouncer_initialize (GInitable    *initable,
                                     GCancellable *cancellable,
                                     GError      **error);
 
-#ifndef HAVE_POLKIT_AUTOPTR
+#if HAVE_POLKIT && !defined HAVE_POLKIT_AUTOPTR
 G_DEFINE_AUTOPTR_CLEANUP_FUNC (PolkitAuthorizationResult, g_object_unref)
 G_DEFINE_AUTOPTR_CLEANUP_FUNC (PolkitDetails, g_object_unref)
 G_DEFINE_AUTOPTR_CLEANUP_FUNC (PolkitSubject, g_object_unref)
@@ -48,7 +51,9 @@ struct _BoltBouncer
   GObject object;
 
   /* */
+#if HAVE_POLKIT
   PolkitAuthority *authority;
+#endif
 };
 
 G_DEFINE_TYPE_WITH_CODE (BoltBouncer, bolt_bouncer, G_TYPE_OBJECT,
@@ -61,7 +66,11 @@ bolt_bouncer_finalize (GObject *object)
 {
   BoltBouncer *bouncer = BOLT_BOUNCER (object);
 
+  g_assert (BOLT_IS_BOUNCER (bouncer));
+
+#if HAVE_POLKIT
   g_clear_object (&bouncer->authority);
+#endif
 
   G_OBJECT_CLASS (bolt_bouncer_parent_class)->finalize (object);
 }
@@ -86,11 +95,13 @@ bouncer_initable_iface_init (GInitableIface *iface)
   iface->init = bouncer_initialize;
 }
 
+#if HAVE_POLKIT
 static gboolean
 bouncer_initialize (GInitable    *initable,
                     GCancellable *cancellable,
                     GError      **error)
 {
+
   BoltBouncer *bnc = BOLT_BOUNCER (initable);
 
   bolt_info (LOG_TOPIC ("bouncer"), "initializing polkit");
@@ -98,9 +109,20 @@ bouncer_initialize (GInitable    *initable,
 
   return bnc->authority != NULL;
 }
+#else /* HAVE_POLKIT */
+static gboolean
+bouncer_initialize (GInitable    *initable,
+                    GCancellable *cancellable,
+                    GError      **error)
+{
+  bolt_info (LOG_TOPIC ("bouncer"), "Checking DISABLED (polkit missing)");
+  return TRUE;
+}
+#endif /* HAVE_POLKIT */
 
 /* internal methods */
 
+#if HAVE_POLKIT
 static gboolean
 bolt_bouncer_check_action (BoltBouncer           *bnc,
                            GDBusMethodInvocation *inv,
@@ -252,6 +274,7 @@ handle_authorize_property (BoltExported          *exported,
 
   return authorized;
 }
+#endif
 
 /* public methods */
 BoltBouncer *
@@ -271,6 +294,7 @@ bolt_bouncer_add_client (BoltBouncer *bnc,
   g_return_if_fail (BOLT_IS_BOUNCER (bnc));
   g_return_if_fail (BOLT_IS_EXPORTED (client));
 
+#if HAVE_POLKIT
   g_signal_connect_object (client, "authorize-method",
                            G_CALLBACK (handle_authorize_method),
                            bnc, 0);
@@ -278,4 +302,5 @@ bolt_bouncer_add_client (BoltBouncer *bnc,
   g_signal_connect_object (client, "authorize-property",
                            G_CALLBACK (handle_authorize_property),
                            bnc, 0);
+#endif
 }
