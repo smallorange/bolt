@@ -1,3 +1,20 @@
+Version 0.9.5
+-------------
+Released: 2023-1-3
+
+* Fixed several test and build setting issues.
+
+* Introduced packit. Packit was used to package rpm to downstream Fedora
+  automatically. Moreover, Koji and bodhi could be triggered by packit
+  automatically.
+
+
+Version 0.9.4
+-------------
+Released: 2022-11-4
+
+* Introduced the bot which was taking over the package works.
+
 Version 0.9.3
 -------------
 _Fix for the fix_
