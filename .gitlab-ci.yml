@@ -1,13 +1,16 @@
-image: docker:latest
+include:
+  - project: 'freedesktop/ci-templates'
+    ref: d2846358c31d5faee106155e4b5caae74704f47b
+    file:
+      - '/templates/fedora.yml'
 
-services:
-  - docker:dind
+image: !reference [ .fdo.container-build@fedora, image]
 
 .build-template: &build
   script:
-    - docker build -t bolt-$OS -f ./contrib/Dockerfile-$OS .
+    - buildah bud --isolation chroot -t bolt-$OS -f ./contrib/Dockerfile-$OS .
     - mkdir build-$OS
-    - docker run --cap-drop=dac_override -e -t -v `pwd`:/src -v `pwd`/build-$OS:/build bolt-$OS ./contrib/docker-build.sh
+    - podman run --cap-drop=dac_override -e -t -v `pwd`:/src -v `pwd`/build-$OS:/build bolt-$OS ./contrib/docker-build.sh
   artifacts:
     paths:
     - build-$OS/meson-logs
@@ -41,8 +44,8 @@ coverity:
       - $COVERITY_TOKEN && $COVERITY_EMAIL
   script:
     - mkdir build-coverity
-    - docker build --build-arg ORG=gicmo --build-arg PROJECT=bolt --build-arg TOKEN=$COVERITY_TOKEN -t bolt-coverity -f ./contrib/Dockerfile-coverity .
-    - docker run --rm -e COVERITY_TOKEN=$COVERITY_TOKEN -e COVERITY_EMAIL=$COVERITY_EMAIL -t -v `pwd`:/src:Z -v `pwd`/build-coverity:/build:Z bolt-coverity ./contrib/coverity.sh
+    - buildah bud --isolation chroot --build-arg ORG=gicmo --build-arg PROJECT=bolt --build-arg TOKEN=$COVERITY_TOKEN -t bolt-coverity -f ./contrib/Dockerfile-coverity .
+    - podman run --rm -e COVERITY_TOKEN=$COVERITY_TOKEN -e COVERITY_EMAIL=$COVERITY_EMAIL -t -v `pwd`:/src:Z -v `pwd`/build-coverity:/build:Z bolt-coverity ./contrib/coverity.sh
   artifacts:
     paths:
     - build-coverity/cov-int/build-log.txt
